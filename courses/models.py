@@ -4,6 +4,12 @@ from django.db import models
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 
+from django_summernote.fields import SummernoteTextField
+
+from .fields import OrderField
+
+from django.utils.text import slugify
+
 # Create your models here.
 class Subject(models.Model):
     title = models.CharField(max_length=200)
@@ -28,12 +34,17 @@ class Course(models.Model):
         on_delete=models.CASCADE
     )
     title = models.CharField(max_length=200)
-    slug = models.SlugField(max_length=200, unique=True)
+    slug = models.SlugField(max_length=200, unique=True, blank=True)
     overview = models.TextField()
     created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-created']
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.title)  # Generate slug from title
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title
@@ -45,9 +56,13 @@ class Lecture(models.Model):
     )
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
+    order = OrderField(blank=True, for_fields=['course'])
 
     def __str__(self):
-        return self.title
+        return f'{self.order}. {self.title}'
+
+    class Meta:
+        ordering = ['order']
 
 
 class Content(models.Model):
@@ -58,10 +73,17 @@ class Content(models.Model):
     )
     content_type = models.ForeignKey(
         ContentType,
-        on_delete=models.CASCADE
+        on_delete=models.CASCADE,
+        limit_choices_to = {
+            'model__in':('text', 'video', 'image', 'file')
+        }
     )
     object_id = models.PositiveIntegerField()
     item = GenericForeignKey('content_type', 'object_id')
+    order = OrderField(blank=True, for_fields=['lecture'])
+
+    class Meta:
+        ordering = ['order']
 
 
 class ItemBase(models.Model):
@@ -81,7 +103,7 @@ class ItemBase(models.Model):
 
 
 class Text(ItemBase):
-    content = models.TextField()
+    content = SummernoteTextField()
 
 
 class File(ItemBase):

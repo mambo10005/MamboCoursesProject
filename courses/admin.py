@@ -1,6 +1,9 @@
 from django.contrib import admin
 from .models import Subject, Course, Lecture
 
+from django_summernote.admin import SummernoteModelAdmin
+from .models import Text
+
 
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
@@ -19,3 +22,9 @@ class CourseAdmin(admin.ModelAdmin):
     search_fields = ['title', 'overview']
     prepopulated_fields = {'slug': ('title',)}
     inlines = [LectureInline]
+
+
+class TextAdmin(SummernoteModelAdmin):
+    summernote_fields = ('content',)
+
+admin.site.register(Text, TextAdmin)
